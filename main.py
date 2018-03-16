@@ -21,9 +21,9 @@ if __name__ == "__main__":
         for t in threads:
             t.join()
                 
-        print "Exiting main thread"
+        print("Exiting main thread")
 
     except KeyboardInterrupt:
-        print ("\nCtrl-C pressed")
+        print("\nCtrl-C pressed")
         terminate.set()
     

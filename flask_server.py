@@ -24,7 +24,7 @@ class FlaskServer (threading.Thread):
     def get_data(self):
         self.tLock.acquire()
         try:
-            print 'inside get data'
+            print("inside get data")
             data = self.meter.grab_data()
             
             return jsonify(voltage=data['voltage'],

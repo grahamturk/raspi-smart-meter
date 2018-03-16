@@ -2,13 +2,14 @@ from time import sleep
 from ina219 import INA219
 from ina219 import DeviceRangeError
 import numpy
+import json
 from web3 import Web3, HTTPProvider, TestRPCProvider
 import threading
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 2.0
-SEC_BTWN_READS = 10
-EN_THRESHOLD = 90
+SEC_BTWN_READS = 5
+EN_THRESHOLD = 50
 
 class SmartMeter (threading.Thread):
     
@@ -29,9 +30,17 @@ class SmartMeter (threading.Thread):
                            shunt_adc=ina.ADC_128SAMP)
         '''
         self.contract_instance = None
-        #self.setup_web3()
+        self.setup_web3()
     
     def run(self):
+        avail_energy = self.contract_instance.call().getAvailableEnergy()
+        print("Available energy")
+        print(avail_energy)
+
+        txHash = self.contract_instance.transact({"from": self.eth_account}).registerUser()
+        print("Register hash")
+        print(txHash)
+        
         while not self.event.is_set():
             self.read_ina219()
             #self.ina.sleep()
@@ -40,14 +49,14 @@ class SmartMeter (threading.Thread):
             
 
     def grab_data(self):
-        print 'inside grab data'
+        print("inside grab data")
         local_data = self.data
         return local_data
     
     def read_ina219(self):
         self.tLock.acquire()
         try:
-            print 'inside reading'
+            print("inside reading")
             #v = self.ina.voltage()
             #i = self.ina.current()
             #p = self.ina.power() / 1000
@@ -62,32 +71,34 @@ class SmartMeter (threading.Thread):
             self.data['power'] = p
 
         except DeviceRangeError as e:
-            print "Device range error"
+            print("Device range error")
 
         else:
             #self.tLock.release()
             # check cumulative energy
             # if exceeds watt-hour, send transaction
             if (self.local_energy_stored > EN_THRESHOLD):
-                #self.send_generate()
-                print 'local storage exceeded'
+                print("local storage exceeded")
+                self.send_generate()
             #self.tLock.acquire()
         
         finally:
             self.tLock.release()
     
         
-'''
-def setup_web3(self):
-    self.w3 = Web3(HTTPProvider('http://localhost:8545'))
-    self.eth_account = w3.eth.accounts[0]
+
+    def setup_web3(self):
+        self.w3 = Web3(HTTPProvider('http://localhost:8545'))
+        self.eth_account = self.w3.eth.accounts[0]
     
-    with open('./EnergyMarket.json', 'r') as f:
-        energy_contract = json.load(f)
-        self.contract_instance = self.w3.eth.contract(address='', abi=energy_contract.abi)
+        with open('./EnergyMarket.json', 'r') as f:
+            energy_contract = json.load(f)
+            self.contract_instance = self.w3.eth.contract(address='0xd00e79a3bbdb39352f8856b6d14f2e92ad4f4dd2', abi=energy_contract["abi"])
         
-def send_generate(self):
-    if (self.contract_instance != None):
-        self.contract_instance.transact().generateEnergy(self.local_energy_stored, {from: self.eth_account})
-        self.local_energy_stored = 0
-'''
+    def send_generate(self):
+        if (self.contract_instance != None):
+            #gas = self.w3.eth.estimateGas({'to': '0xd3cda913deb6f67967b99d67acdfa1712c293601', 'from': self.w3.eth.coinbase, 'value': 12345444})
+            hash = self.contract_instance.transact({"from": self.eth_account}).generateEnergy(int(self.local_energy_stored), 10)
+            print("hash")
+            print(hash)
+            self.local_energy_stored = 0
