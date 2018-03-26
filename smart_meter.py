@@ -33,17 +33,34 @@ class SmartMeter (threading.Thread):
         self.setup_web3()
     
     def run(self):
-        avail_energy = self.contract_instance.call().getAvailableEnergy()
+        avail_energy = self.contract_instance.functions.getAvailableEnergy().call()
         print("Available energy")
         print(avail_energy)
 
-        txHash = self.contract_instance.transact({"from": self.eth_account}).registerUser()
-        print("Register hash")
-        print(txHash)
+        isRegistered = self.contract_instance.functions.isRegistered(self.eth_account).call()
+        if isRegistered != True:
+            txHash = self.contract_instance.functions.registerUser().transact({"from": self.eth_account})
+        
+        def handle_event(e):
+            print(e)
         
         while not self.event.is_set():
             self.read_ina219()
             #self.ina.sleep()
+            
+            '''
+            new_entries = self.event_filter.get_new_entries()
+            print("event filter entries")
+            print(new_entries)
+            for e in new_entries:
+                print("caught new generation event")
+                handle_event(e)
+            '''
+
+            for block in self.block_filter.get_new_entries():
+                print("caught new lastest")
+                print(block)
+
             sleep(SEC_BTWN_READS)
             #self.ina.wake()
             
@@ -84,21 +101,32 @@ class SmartMeter (threading.Thread):
         
         finally:
             self.tLock.release()
-    
-        
-
+            
     def setup_web3(self):
         self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         self.eth_account = self.w3.eth.accounts[0]
     
         with open('./EnergyMarket.json', 'r') as f:
             energy_contract = json.load(f)
-            self.contract_instance = self.w3.eth.contract(address='0xd00e79a3bbdb39352f8856b6d14f2e92ad4f4dd2', abi=energy_contract["abi"])
-        
+            checksum_address = self.w3.toChecksumAddress('0x0150474b7c7d72f4b11af1d6e54c0ed6f27fe403')
+            self.contract_instance = self.w3.eth.contract(address=checksum_address, abi=energy_contract["abi"])
+
+            #self.event_filter = self.contract_instance.eventFilter('EnergyGenerated')
+            self.block_filter = self.w3.eth.filter('latest')
+            
     def send_generate(self):
         if (self.contract_instance != None):
-            #gas = self.w3.eth.estimateGas({'to': '0xd3cda913deb6f67967b99d67acdfa1712c293601', 'from': self.w3.eth.coinbase, 'value': 12345444})
-            hash = self.contract_instance.transact({"from": self.eth_account}).generateEnergy(int(self.local_energy_stored), 10)
+            hash = self.contract_instance.functions.generateEnergy(int(self.local_energy_stored), 10).transact({"from": self.eth_account})
             print("hash")
             print(hash)
+
+            receipt = self.w3.eth.getTransactionReceipt(hash)
+            print("receipt")
+            print(receipt)
+            
+            rich_logs = self.contract_instance.events.EnergyGenerated().processReceipt(receipt)
+            print("rich logs args")
+            print(rich_logs[0]['event'])
+            print(rich_logs[0]['args'])
+
             self.local_energy_stored = 0
