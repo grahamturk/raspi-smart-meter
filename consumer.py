@@ -132,8 +132,9 @@ class ConsumerMeter (threading.Thread):
             energy_consumed += CONSUMPTION_DELAY * p
 
             #energy_consumed += CONSUMPTION_DELAY * self.mmaPower
-            
+            self.ina.sleep()
             sleep(CONSUMPTION_DELAY)
+            self.ina.wake()
 
     def read_ina219(self):
         try: 
