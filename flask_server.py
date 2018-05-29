@@ -16,7 +16,7 @@ class FlaskServer (threading.Thread):
         self.app.add_url_rule('/solar', 'solar', self.get_data, methods=['GET'])
         
     def run(self):
-        self.app.run()
+        self.app.run(host='0.0.0.0')
 
     def hello_world(self):
         return 'Hello, world!'
@@ -29,7 +29,8 @@ class FlaskServer (threading.Thread):
             
             return jsonify(voltage=data['voltage'],
                            current=data['current'],
-                           power=data['power'])
+                           power=data['power'],
+                           time=data['time'])
 
         except (IndexError, IOError) as e:
             return jsonify({'error': e.message}), 503
