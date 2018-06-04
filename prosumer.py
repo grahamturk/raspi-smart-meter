@@ -37,7 +37,7 @@ class ProsumerMeter (threading.Thread):
         self.ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=INA_ADDRESS)
         self.ina.configure(voltage_range=self.ina.RANGE_32V,
                            gain=self.ina.GAIN_AUTO,
-                           bus_addc=self.ina.ADC_128SAMP,
+                           bus_adc=self.ina.ADC_128SAMP,
                            shunt_adc=self.ina.ADC_128SAMP)
 
         self.contract_instance = None
@@ -137,7 +137,7 @@ class ProsumerMeter (threading.Thread):
     def setup_web3(self):
         #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         #ngrok address
-        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io')
+        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
         
         print("PROS: Connected to web3:{}".format(self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[0]

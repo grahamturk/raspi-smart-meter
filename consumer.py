@@ -1,6 +1,5 @@
 from time import sleep
 from ina219 import INA219, DeviceRangeError
-import numpy
 import json
 from web3 import Web3, HTTPProvider
 import threading
@@ -38,7 +37,7 @@ class ConsumerMeter (threading.Thread):
         self.ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=INA_ADDRESS)
         self.ina.configure(voltage_range=ina.RANGE_32V,
                            gain=ina.GAIN_AUTO,
-                           bus_addc=ina.ADC_128SAMP,
+                           bus_adc=ina.ADC_128SAMP,
                            shunt_adc=ina.ADC_128SAMP)
 
         self.contract_instance = None
