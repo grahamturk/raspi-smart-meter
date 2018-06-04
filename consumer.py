@@ -10,19 +10,20 @@ from gpiozero import LED
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 2.0
 SEC_BTWN_READS = 10
-EN_THRESHOLD = 10
+EN_THRESHOLD = 2000
 MMA_N = 50
 INA_SAMPLES = 10
 INA_ADDRESS = 0x41
 CONSUMPTION_DELAY = 2
 
 class ConsumerMeter (threading.Thread):
-    def __init__(self, thread_id, name, event, consumer_id):
+    def __init__(self, thread_id, name, event, consumer_id, consLock):
         threading.Thread.__init__(self)
         self.thread_id = thread_id
         self.name = name
         self.event = event
         self.consumer_id = consumer_id
+        self.cLock = consLock
 
         self.local_energy_consumed = 0.0
         
@@ -112,8 +113,8 @@ class ConsumerMeter (threading.Thread):
                 
 
     def setup_web3(self):
+        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
         #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
-        self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         print("CONS{}: Connected to web3:{}".format(self.consumer_id, self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[self.consumer_id]
         #self.eth_account = self.w3.personal.listAccounts[self.consumer_id]
@@ -136,6 +137,7 @@ class ConsumerMeter (threading.Thread):
         energy_consumed = 0.0
         while int(energy_consumed) < EN_THRESHOLD:
             p = self.read_ina219()
+            print('CONS{} power: {}'.format(self.consumer_id, p))
             energy_consumed += CONSUMPTION_DELAY * p
 
             #energy_consumed += CONSUMPTION_DELAY * self.mmaPower
@@ -145,13 +147,16 @@ class ConsumerMeter (threading.Thread):
 
 
     def read_ina219(self):
-        try: 
+        self.cLock.acquire()
+        try:
             p = self.ina.power()
             # self.update_mma()
             return p
         except DeviceRangerError as e:
             print("CONS{}: Device ranger error".format(self.consumer_id))
             return 0
+        finally:
+            self.cLock.release()
 
 
     def update_mma(self):

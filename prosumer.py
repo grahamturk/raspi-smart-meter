@@ -9,8 +9,8 @@ from Adafruit_IO import *
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 1.0
-SEC_BTWN_READS = 10
-EN_THRESHOLD = 10
+SEC_BTWN_READS = 4
+EN_THRESHOLD = 4000
 MMA_N = 50
 INA_SAMPLES = 10
 INA_ADDRESS = 0x40
@@ -90,7 +90,8 @@ class ProsumerMeter (threading.Thread):
             v = self.ina.voltage()
             i = self.ina.current()
             p = self.ina.power()
-                
+
+            print('PROS power: {}'.format(p))
             #v = random.randint(1,2)
             #i = random.randint(1,2)
             #p = v * i
@@ -134,9 +135,9 @@ class ProsumerMeter (threading.Thread):
             self.tLock.release()
             
     def setup_web3(self):
-        self.w3 = Web3(HTTPProvider('http://localhost:8545'))
+        #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         #ngrok address
-        #self.w3 = Web3(HTTPProvider('http://')
+        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io')
         
         print("PROS: Connected to web3:{}".format(self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[0]
