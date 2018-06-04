@@ -5,6 +5,7 @@ import json
 from web3 import Web3, HTTPProvider
 import threading
 from hems import Hems
+from gpiozero import LED
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 2.0
@@ -27,14 +28,17 @@ class ConsumerMeter (threading.Thread):
         
         self.mmaPowerSum = 0.0
         self.mmaPower = 0.0
+        
+        if (consumer_id == 1):
+            self.led = LED(16)
+        else:
+            self.led = LED(26)
 
-        '''
         self.ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=INA_ADDRESS)
         self.ina.configure(voltage_range=ina.RANGE_32V,
                            gain=ina.GAIN_AUTO,
                            bus_addc=ina.ADC_128SAMP,
                            shunt_adc=ina.ADC_128SAMP)
-        '''
 
         self.contract_instance = None
         self.setup_web3()
@@ -57,7 +61,7 @@ class ConsumerMeter (threading.Thread):
         #self.preload_mma()
 
         while not self.event.is_set():
-            #_ = self.read_ina219()
+            _ = self.read_ina219()
 
             new_entries = self.generated_event_filter.get_new_entries()
             if (len(new_entries) != 0):
@@ -100,7 +104,10 @@ class ConsumerMeter (threading.Thread):
             auction_id = e['args']['auctionId']
             if (highest_bidder == self.eth_account):
                 print("CONS{}: Wins auction {} with bid of {}".format(self.consumer_id, auction_id, e['args']['highestBid']))
+                
+                self.led.on()
                 self.measure_consumption()
+                self.led.off()
                 hash = self.contract_instance.functions.buyerApprove(auction_id).transact({'from': self.eth_account})
                 
 
@@ -114,7 +121,7 @@ class ConsumerMeter (threading.Thread):
 
         with open('./EnergyMarket.json', 'r') as f:
             energy_contract = json.load(f)
-            plain_address = '0x5ea92dfe577d93e07d323b65fda9159202269e35'
+            plain_address = '0x4e0e4fc3ef63e8768ad9e43caa1d1bc7d6d35439'
             checksum_address = self.w3.toChecksumAddress(plain_address)
             self.contract_instance = self.w3.eth.contract(address=plain_address, abi=energy_contract["abi"])
 
@@ -132,21 +139,21 @@ class ConsumerMeter (threading.Thread):
             energy_consumed += CONSUMPTION_DELAY * p
 
             #energy_consumed += CONSUMPTION_DELAY * self.mmaPower
-            self.ina.sleep()
+            #self.ina.sleep()
             sleep(CONSUMPTION_DELAY)
-            self.ina.wake()
+            #self.ina.wake()
+
 
     def read_ina219(self):
         try: 
-            #p = self.ina.power()
+            p = self.ina.power()
             # self.update_mma()
-            #return p
-            return 2
+            return p
         except DeviceRangerError as e:
             print("CONS{}: Device ranger error".format(self.consumer_id))
             return 0
 
-    
+
     def update_mma(self):
         for i in range(INA_SAMPLES):
             try:
@@ -165,6 +172,3 @@ class ConsumerMeter (threading.Thread):
         
         self.mmaPower = mmaPowerSum / MMA_N
 
-          
-            
-            
