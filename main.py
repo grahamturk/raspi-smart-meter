@@ -7,12 +7,13 @@ if __name__ == "__main__":
     terminate = threading.Event()
     try:
         threadLock = threading.Lock()
+        consLock = threading.Lock()
         
         threads = []
         
         prosumer_thread = ProsumerMeter(1, "PSM-Thread", threadLock, terminate)
-        consumer_thread_1 = ConsumerMeter(2, "CSM-Thread-1", terminate, 1)
-        consumer_thread_2 = ConsumerMeter(3, "CSM-Thread-2", terminate, 2)
+        consumer_thread_1 = ConsumerMeter(2, "CSM-Thread-1", terminate, 1, consLock)
+        consumer_thread_2 = ConsumerMeter(3, "CSM-Thread-2", terminate, 2, consLock)
         server_thread = FlaskServer(3, "FS_Thread", prosumer_thread, threadLock, terminate)
         
         server_thread.start()
