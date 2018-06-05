@@ -112,7 +112,7 @@ class ConsumerMeter (threading.Thread):
                 
 
     def setup_web3(self):
-        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
+        self.w3 = Web3(HTTPProvider('http://f5e29d9e.ngrok.io'))
         #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         print("CONS{}: Connected to web3:{}".format(self.consumer_id, self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[self.consumer_id]
@@ -121,7 +121,7 @@ class ConsumerMeter (threading.Thread):
 
         with open('./EnergyMarket.json', 'r') as f:
             energy_contract = json.load(f)
-            plain_address = '0x4e0e4fc3ef63e8768ad9e43caa1d1bc7d6d35439'
+            plain_address = '0xc12ec3ff9803580e29dcf03af8492f5f53755580'
             checksum_address = self.w3.toChecksumAddress(plain_address)
             self.contract_instance = self.w3.eth.contract(address=plain_address, abi=energy_contract["abi"])
 
