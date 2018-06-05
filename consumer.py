@@ -1,10 +1,10 @@
 from time import sleep
-from ina219 import INA219, DeviceRangeError
+#from ina219 import INA219, DeviceRangeError
 import json
 from web3 import Web3, HTTPProvider
 import threading
 from hems import Hems
-from gpiozero import LED
+#from gpiozero import LED
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 2.0
@@ -29,6 +29,7 @@ class ConsumerMeter (threading.Thread):
         self.mmaPowerSum = 0.0
         self.mmaPower = 0.0
         
+        '''
         if (consumer_id == 1):
             self.led = LED(16)
         else:
@@ -39,6 +40,7 @@ class ConsumerMeter (threading.Thread):
                            gain=ina.GAIN_AUTO,
                            bus_adc=ina.ADC_128SAMP,
                            shunt_adc=ina.ADC_128SAMP)
+        '''
 
         self.contract_instance = None
         self.setup_web3()
@@ -105,15 +107,15 @@ class ConsumerMeter (threading.Thread):
             if (highest_bidder == self.eth_account):
                 print("CONS{}: Wins auction {} with bid of {}".format(self.consumer_id, auction_id, e['args']['highestBid']))
                 
-                self.led.on()
+                #self.led.on()
                 self.measure_consumption()
-                self.led.off()
+                #self.led.off()
                 hash = self.contract_instance.functions.buyerApprove(auction_id).transact({'from': self.eth_account})
                 
 
     def setup_web3(self):
-        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
-        #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
+        #self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
+        self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         print("CONS{}: Connected to web3:{}".format(self.consumer_id, self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[self.consumer_id]
         #self.eth_account = self.w3.personal.listAccounts[self.consumer_id]
@@ -148,9 +150,10 @@ class ConsumerMeter (threading.Thread):
     def read_ina219(self):
         self.cLock.acquire()
         try:
-            p = self.ina.power()
+            #p = self.ina.power()
             # self.update_mma()
-            return p
+            #return p
+            return 200
         except DeviceRangerError as e:
             print("CONS{}: Device ranger error".format(self.consumer_id))
             return 0

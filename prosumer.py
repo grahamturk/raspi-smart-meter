@@ -1,6 +1,6 @@
 from time import sleep
 import time
-from ina219 import INA219, DeviceRangeError
+#from ina219 import INA219, DeviceRangeError
 import json
 from web3 import Web3, HTTPProvider
 import threading
@@ -34,12 +34,14 @@ class ProsumerMeter (threading.Thread):
         self.mmaPowerSum = 0.0
         self.mmaPower = 0.0
 
+        '''
         self.ina = INA219(SHUNT_OHMS, MAX_EXPECTED_AMPS, address=INA_ADDRESS)
         self.ina.configure(voltage_range=self.ina.RANGE_32V,
                            gain=self.ina.GAIN_AUTO,
                            bus_adc=self.ina.ADC_128SAMP,
                            shunt_adc=self.ina.ADC_128SAMP)
 
+        '''
         self.contract_instance = None
         self.setup_web3()
     
@@ -87,14 +89,16 @@ class ProsumerMeter (threading.Thread):
     def read_ina219(self):
         self.tLock.acquire()
         try:
-            v = self.ina.voltage()
-            i = self.ina.current()
-            p = self.ina.power()
+            #v = self.ina.voltage()
+            #i = self.ina.current()
+            #p = self.ina.power()
+
+            v = random.randint(10,12)
+            i = random.randint(1,2)
+            #p = v * i
+            p = 200
 
             print('PROS power: {}'.format(p))
-            #v = random.randint(1,2)
-            #i = random.randint(1,2)
-            #p = v * i
             
             self.local_energy_stored += SEC_BTWN_READS * p
             #self.local_energy_stored += p
@@ -135,9 +139,9 @@ class ProsumerMeter (threading.Thread):
             self.tLock.release()
             
     def setup_web3(self):
-        #self.w3 = Web3(HTTPProvider('http://localhost:8545'))
+        self.w3 = Web3(HTTPProvider('http://localhost:8545'))
         #ngrok address
-        self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
+        #self.w3 = Web3(HTTPProvider('http://447df587.ngrok.io'))
         
         print("PROS: Connected to web3:{}".format(self.w3.eth.blockNumber))
         self.eth_account = self.w3.eth.accounts[0]
