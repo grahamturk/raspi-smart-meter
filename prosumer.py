@@ -6,11 +6,12 @@ from web3 import Web3, HTTPProvider
 import threading
 import random
 from Adafruit_IO import *
+import addresses
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 1.0
-SEC_BTWN_READS = 4
-EN_THRESHOLD = 4000
+SEC_BTWN_READS = 5
+EN_THRESHOLD = 1000
 MMA_N = 50
 INA_SAMPLES = 10
 INA_ADDRESS = 0x40
@@ -63,16 +64,23 @@ class ProsumerMeter (threading.Thread):
             self.read_ina219()
             #self.ina.sleep()
             
-            new_entries = self.consumed_event_filter.get_new_entries()
-            for e in new_entries:
+            new_consumed_entries = self.consumed_event_filter.get_new_entries()
+            for e in new_consumed_entries:
                 self.handle_consumed_event(e)
                 
+            new_generation_entries = self.generated_event_filter.get_new_entries()
+            for e in new_generation_entries:
+                self.handle_generation_event(e)
+
             #for block in self.block_filter.get_new_entries():
             #    print("New lastest block:\n{}".format(block))
 
             sleep(SEC_BTWN_READS)
             #self.ina.wake()
-
+    
+    def handle_generation_event(self, e):
+        print("IN HANDLE GENERATION EVENT")
+        print("PROS: caught event {}".format(e['event']))
             
     def handle_consumed_event(self, e):
         if (self.contract_instance != None):
@@ -99,9 +107,10 @@ class ProsumerMeter (threading.Thread):
             p = 200
 
             print('PROS power: {}'.format(p))
-            
-            self.local_energy_stored += SEC_BTWN_READS * p
-            #self.local_energy_stored += p
+            print('Local energy: {}'.format(self.local_energy_stored))
+
+            #self.local_energy_stored += SEC_BTWN_READS * p
+            self.local_energy_stored += p
         
             currentTime = time.time()
             self.data['time'] = currentTime
@@ -111,8 +120,6 @@ class ProsumerMeter (threading.Thread):
 
             data = Data(value=p, created_epoch=currentTime)
             AIO.create_data('solardata', data)
-            
-            print("PROS: power = {}".format(p))
 
             '''
             self.update_mma()
@@ -125,7 +132,9 @@ class ProsumerMeter (threading.Thread):
 
         except DeviceRangeError as e:
             print("PROS: Device range error")
-
+        except:
+            print("PROS: Error")
+            raise
         else:
             #self.tLock.release()
             # check cumulative energy
@@ -152,16 +161,18 @@ class ProsumerMeter (threading.Thread):
     
         with open('./EnergyMarket.json', 'r') as f:
             energy_contract = json.load(f)
-            plain_address = '0x4e0e4fc3ef63e8768ad9e43caa1d1bc7d6d35439'
+            plain_address = addresses.CONTRACT_ADDR
             checksum_address = self.w3.toChecksumAddress(plain_address)
+            print('checksum addr: {}'.format(checksum_address))
             self.contract_instance = self.w3.eth.contract(address=plain_address, abi=energy_contract["abi"])
             
-            #bad one
-            #self.event_filter = self.contract_instance.events.EnergyGenerated.createFilter(fromBlock=0, toBlock='latest')
-            #good one
-            self.event_filter = self.contract_instance.eventFilter('EnergyGenerated', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
-            
-            self.consumed_event_filter = self.contract_instance.eventFilter('EnergyConsumed', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
+            #new syntax
+            self.generated_event_filter = self.contract_instance.events.EnergyGenerated.createFilter(fromBlock='latest', toBlock='latest')
+            self.consumed_event_filter = self.contract_instance.events.EnergyConsumed.createFilter(fromBlock='latest', toBlock='latest')
+
+            #deprecated
+            #self.event_filter = self.contract_instance.eventFilter('EnergyGenerated', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
+            #self.consumed_event_filter = self.contract_instance.eventFilter('EnergyConsumed', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
 
             #self.block_filter = self.w3.eth.filter('latest')
             
@@ -174,7 +185,7 @@ class ProsumerMeter (threading.Thread):
             #print("PROS: Receipt: {}".format(receipt))
             
             rich_log = self.contract_instance.events.EnergyGenerated().processReceipt(receipt)[0]
-            #print("PROS: Event: {}\n Args: {}".format(rich_log['event'], rich_log['args']))
+            print("PROS: Event: {}\nArgs: {}".format(rich_log['event'], rich_log['args']))
 
             self.local_energy_stored = 0
             energy_balance = self.contract_instance.functions.getEnergyBalance(self.eth_account).call()

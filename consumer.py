@@ -4,16 +4,17 @@ import json
 from web3 import Web3, HTTPProvider
 import threading
 from hems import Hems
+import addresses
 #from gpiozero import LED
 
 SHUNT_OHMS = 0.1
 MAX_EXPECTED_AMPS = 2.0
-SEC_BTWN_READS = 10
-EN_THRESHOLD = 2000
+SEC_BTWN_READS = 3
+EN_THRESHOLD = 1000
 MMA_N = 50
 INA_SAMPLES = 10
 INA_ADDRESS = 0x41
-CONSUMPTION_DELAY = 2
+CONSUMPTION_DELAY = 1
 
 class ConsumerMeter (threading.Thread):
     def __init__(self, thread_id, name, event, consumer_id, consLock):
@@ -63,18 +64,18 @@ class ConsumerMeter (threading.Thread):
         #self.preload_mma()
 
         while not self.event.is_set():
-            _ = self.read_ina219()
+            #_ = self.read_ina219()
 
-            new_entries = self.generated_event_filter.get_new_entries()
-            if (len(new_entries) != 0):
-                #print("CONS{}: Caught generation event filter entries: {}".format(self.consumer_id, new_entries))
-                for e in new_entries:
+            new_generation_entries = self.generated_event_filter.get_new_entries()
+            if (len(new_generation_entries) != 0):
+                #print("CONS{}: Caught generation event filter entries: {}".format(self.consumer_id, new_generation_entries))
+                for e in new_generation_entries:
                     self.handle_generation_event(e)
 
-            new_entries = self.auction_end_event_filter.get_new_entries()
-            if (len(new_entries) != 0):
-                print("CONS{}: Caught end auction event filter entries: {}".format(self.consumer_id, new_entries))                
-                for e in new_entries:
+            new_auction_end_entries = self.auction_end_event_filter.get_new_entries()
+            if (len(new_auction_end_entries) != 0):
+                print("CONS{}: Caught end auction event filter entries: {}".format(self.consumer_id, new_auction_end_entries))              
+                for e in new_auction_end_entries:
                     self.handle_auction_end_event(e)
 
             sleep(SEC_BTWN_READS)
@@ -104,11 +105,12 @@ class ConsumerMeter (threading.Thread):
         if (self.contract_instance != None):
             highest_bidder = e['args']['highestBidder']
             auction_id = e['args']['auctionId']
+            quantity = e['args']['quantity']
             if (highest_bidder == self.eth_account):
-                print("CONS{}: Wins auction {} with bid of {}".format(self.consumer_id, auction_id, e['args']['highestBid']))
+                print("CONS{}: Wins auction {} with bid of {}; quantity = {}".format(self.consumer_id, auction_id, e['args']['highestBid'], quantity))
                 
                 #self.led.on()
-                self.measure_consumption()
+                self.measure_consumption(quantity)
                 #self.led.off()
                 hash = self.contract_instance.functions.buyerApprove(auction_id).transact({'from': self.eth_account})
                 
@@ -123,23 +125,28 @@ class ConsumerMeter (threading.Thread):
 
         with open('./EnergyMarket.json', 'r') as f:
             energy_contract = json.load(f)
-            plain_address = '0x4e0e4fc3ef63e8768ad9e43caa1d1bc7d6d35439'
+            plain_address = addresses.CONTRACT_ADDR
             checksum_address = self.w3.toChecksumAddress(plain_address)
             self.contract_instance = self.w3.eth.contract(address=plain_address, abi=energy_contract["abi"])
 
             #print("CONS{}: Contract events:\n{}".format(self.consumer_id, self.contract_instance.events.EnergyGenerated))
 
-            #self.generated_event_filter = self.contract_instance.events.EnergyGenerated.createFilter(fromBlock='latest')
-            self.generated_event_filter = self.contract_instance.eventFilter('EnergyGenerated', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
-            self.auction_end_event_filter = self.contract_instance.eventFilter('AuctionEnded', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
+            #new syntax
+            self.generated_event_filter = self.contract_instance.events.EnergyGenerated.createFilter(fromBlock='latest', toBlock='latest')
+            self.auction_end_event_filter = self.contract_instance.events.AuctionEnded.createFilter(fromBlock='latest', toBlock='latest')
+            
+            #deprecated
+            #self.generated_event_filter = self.contract_instance.eventFilter('EnergyGenerated', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
+            #self.auction_end_event_filter = self.contract_instance.eventFilter('AuctionEnded', filter_params={'fromBlock': 'latest', 'toBlock': 'latest'})
 
         
-    def measure_consumption(self):
+    def measure_consumption(self, quantity):
         energy_consumed = 0.0
-        while int(energy_consumed) < EN_THRESHOLD:
+        while int(energy_consumed) < quantity:
             p = self.read_ina219()
             print('CONS{} power: {}'.format(self.consumer_id, p))
             energy_consumed += CONSUMPTION_DELAY * p
+            print('CONS{} Energy consumed: {}'.format(self.consumer_id, energy_consumed))
 
             #energy_consumed += CONSUMPTION_DELAY * self.mmaPower
             #self.ina.sleep()
