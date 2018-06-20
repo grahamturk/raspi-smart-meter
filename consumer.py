@@ -49,7 +49,7 @@ class ConsumerMeter (threading.Thread):
             txHash = self.contract_instance.functions.registerUser().transact({"from": self.eth_account})
         else: # Fetch initial coin balance
             coin_balance = self.contract_instance.functions.getCoinBalance(self.eth_account).call()
-            print("CONS{}: Coin balance = {}".format(self.consumer_id, avail_energy, coin_balance))
+            print("CONS{}: Coin balance = {}".format(self.consumer_id, coin_balance))
         
         #Preload Power MMA
         #self.preload_mma()
@@ -118,10 +118,9 @@ class ConsumerMeter (threading.Thread):
                 
     # If this consumer is new highest bidder, update coin balance
     def handle_bid_increased_event(self, e):
-        if (self.contract_instance != None):
-            if (e['args']['bidder'] == self.eth_account):
-                coin_balance = self.contract_instance.functions.getCoinBalance(self.eth_account).call()
-                print("CONS{}: Bid increased: Updated coin balance = {}".format(self.consumer_id, coin_balance))
+        if (e['args']['bidder'] == self.eth_account):
+            coin_balance = self.contract_instance.functions.getCoinBalance(self.eth_account).call()
+            print("CONS{}: Bid increased: Updated coin balance = {}".format(self.consumer_id, coin_balance))
     
     # Setup all web3-related functionality (web3 instance, eth account, contract instance)
     def setup_web3(self):

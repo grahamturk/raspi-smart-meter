@@ -56,7 +56,7 @@ class ProsumerMeter (threading.Thread):
             txHash = self.contract_instance.functions.registerUser().transact({"from": self.eth_account})
         else: # Fetch initial coin balance
             coin_balance = self.contract_instance.functions.getCoinBalance(self.eth_account).call()
-            print("PROS: Coin balance: {}".format(avail_energy, coin_balance))
+            print("PROS: Coin balance: {}".format(coin_balance))
         
         # Preload MMAs
         #self.preload_mma()
@@ -212,7 +212,7 @@ class ProsumerMeter (threading.Thread):
             try: 
                 v = self.ina.voltage()
                 i = self.ina.current()
-                p = self.ina.power() / 1000
+                p = self.ina.power()
             
             except DeviceRangeError as e:
                 continue
