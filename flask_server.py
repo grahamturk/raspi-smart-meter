@@ -1,6 +1,5 @@
 from flask import Flask, jsonify
 import threading
-from time import sleep
 
 class FlaskServer (threading.Thread):
     def __init__(self, threadID, name, meter, threadLock, event):
