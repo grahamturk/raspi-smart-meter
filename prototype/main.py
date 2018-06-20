@@ -6,11 +6,13 @@ import threading
 if __name__ == "__main__":
     terminate = threading.Event()
     try:
+        # Create thread locks for atomic reads
         threadLock = threading.Lock()
         consLock = threading.Lock()
         
         threads = []
-        
+
+        # Create and start threads for market participants and flask server
         prosumer_thread = ProsumerMeter(1, "PSM-Thread", threadLock, terminate)
         consumer_thread_1 = ConsumerMeter(2, "CSM-Thread-1", terminate, 1, consLock)
         consumer_thread_2 = ConsumerMeter(3, "CSM-Thread-2", terminate, 2, consLock)
@@ -26,6 +28,7 @@ if __name__ == "__main__":
         threads.append(consumer_thread_2)
         threads.append(server_thread)
         
+        # Defer execution to threads by blocking this thread
         for t in threads:
             t.join()
                 

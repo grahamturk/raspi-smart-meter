@@ -1,6 +1,5 @@
 from flask import Flask, jsonify
 import threading
-from time import sleep
 
 class FlaskServer (threading.Thread):
     def __init__(self, threadID, name, meter, threadLock, event):
@@ -11,20 +10,24 @@ class FlaskServer (threading.Thread):
         self.tLock = threadLock
         self.event = event
         
+        # Set up app instance and routes
         self.app = Flask(__name__)
         self.app.add_url_rule('/', 'index', self.hello_world, methods=['GET'])
         self.app.add_url_rule('/solar', 'solar', self.get_data, methods=['GET'])
         
+    # Triggered when start() method of thread is called    
     def run(self):
         self.app.run(host='0.0.0.0')
 
+    # Index route handler
     def hello_world(self):
         return 'Hello, world!'
 
+    # Solar endpoint route handler
+    # Returns live meter reads from the INA219
     def get_data(self):
         self.tLock.acquire()
         try:
-            print("inside get data")
             data = self.meter.grab_data()
             
             return jsonify(voltage=data['voltage'],
